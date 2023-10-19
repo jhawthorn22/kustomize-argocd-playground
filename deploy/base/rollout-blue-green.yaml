@@ -1,0 +1,59 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: base
+
+spec:
+  selector:
+    matchLabels:
+      app: base
+  
+  replicas: 1
+  
+  revisionHistoryLimit: 3
+  rollbackWindow:
+    revisions: 3
+  # analysis:
+  #   successfulRunHistoryLimit: 3
+  #   unsuccessfulRunHistoryLimit: 3
+  
+  strategy:
+    blueGreen:
+      activeService: base
+      previewService: base-preview
+      activeMetadata:
+        labels:
+          role: active
+      previewMetadata:
+        labels:
+          role: preview
+  
+  template:
+    metadata:
+      labels:
+        app: base
+    spec:
+      containers:
+        - name: base
+          image: repo/base:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          volumeMounts:
+            - name: base
+              mountPath: /etc/config
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+          resources: {}
+      volumes:
+        - name: base
+          configMap:
+            name: base
